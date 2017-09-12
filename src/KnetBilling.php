@@ -8,6 +8,8 @@ use \ZipArchive;
 class KnetBilling implements Billing
 {
 
+    const CIPHER_KEY = "Those who profess to favour freedom and yet depreciate agitation are men who want rain without thunder and lightning";
+
     protected $webaddress;
     protected $port;
     protected $id;
@@ -118,11 +120,6 @@ class KnetBilling implements Billing
         $this->alias = $s;
     }
 
-    public function getAlias()
-    {
-        return $this->alias;
-    }
-
     public function getPaymentURL()
     {
         return $this->paymentUrl . "&PaymentID=" . $this->paymentId;
@@ -141,6 +138,10 @@ class KnetBilling implements Billing
         return $this;
     }
 
+    /**
+     * @return string
+     * @throws \Exception
+     */
     public function initRequest()
     {
 
@@ -161,11 +162,11 @@ class KnetBilling implements Billing
 
         $urlParams = http_build_query($args);
 
-        if (!strlen($urlParams) > 0) {
+        if (empty($urlParams)) {
             throw new \Exception("Failed to make connection");
         }
 
-        if (strlen($this->webaddress) <= 0) {
+        if (empty($this->webaddress)) {
             throw new \Exception("Could not build URL");
         }
 
@@ -190,27 +191,27 @@ class KnetBilling implements Billing
 
         $stringBuffer .= "servlet/" . "PaymentInitHTTPServlet";
 
-        $c = curl_init();
+        $request = curl_init();
 
-        curl_setopt($c, CURLOPT_HEADER, 0);
-        curl_setopt($c, CURLOPT_URL, $stringBuffer);
-        curl_setopt($c, CURLOPT_POST, true);
-        curl_setopt($c, CURLOPT_POSTFIELDS, $urlParams);
-        curl_setopt($c, CURLOPT_SSL_VERIFYHOST, 2);
-        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($request, CURLOPT_HEADER, 0);
+        curl_setopt($request, CURLOPT_URL, $stringBuffer);
+        curl_setopt($request, CURLOPT_POST, true);
+        curl_setopt($request, CURLOPT_POSTFIELDS, $urlParams);
+        curl_setopt($request, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($request, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($request, CURLOPT_RETURNTRANSFER, 1);
 
-        $response = curl_exec($c);
+        $response = curl_exec($request);
 
-        if (curl_error($c)) {
-            throw new \Exception(sprintf("CURL ERROR %s", curl_errno($c)));
+        if (curl_error($request)) {
+            throw new \Exception(sprintf("CURL ERROR %s", curl_errno($request)));
         }
 
         if (!$response) {
             throw new \Exception("No Data To Post");
         }
 
-        curl_close($c);
+        curl_close($request);
 
         return $response;
     }
@@ -221,13 +222,11 @@ class KnetBilling implements Billing
      */
     public function readFromResource()
     {
-        if (!$this->createReadableZip()) {
-            throw new \Exception('Could not create the Zip file');
+        $payload = $this->createReadableZip();
+
+        if(!is_array($payload)) {
+            throw new \Exception('Could not parse the Zip file');
         }
-
-        $zip = $this->readZip();
-
-        $payload = json_decode(json_encode((array)simplexml_load_string($zip)), 1);
 
         foreach ($payload as $key => $value) {
             $this->{$key} = $value;
@@ -238,59 +237,58 @@ class KnetBilling implements Billing
         return $this;
     }
 
+    /**
+     * @return array
+     * @throws \Exception
+     */
     public function createReadableZip()
     {
-
         $filenameInput = $this->resourcePath . "resource.cgn";
         $handleInput = fopen($filenameInput, "r");
         $contentsInput = fread($handleInput, filesize($filenameInput));
 
         $filenameOutput = $this->resourcePath . "resource.cgz";
-        @unlink($filenameOutput);
         $handleOutput = fopen($filenameOutput, "w");
 
         $inByteArray = $this->getBytes($contentsInput);
         $outByteArray = $this->simpleXOR($inByteArray);
 
         fwrite($handleOutput, $this->getString($outByteArray));
-        fclose($handleInput);
-        fclose($handleOutput);
 
-        return true;
-    }
 
-    public function readZip()
-    {
-        $filenameInput = $this->resourcePath . "resource.cgz";
         $zip = new ZipArchive;
 
-        if (!$zip->open($filenameInput)) {
+        if (!$zip->open($filenameOutput)) {
             throw new \Exception('Could not open the Zip file');
         }
 
         $zip->extractTo($this->resourcePath);
         $zip->close();
 
-        $xmlNameInput = $this->resourcePath . $this->getAlias() . ".xml";
+        $xmlNameInput = $this->resourcePath . $this->alias . ".xml";
         $xmlHandleInput = fopen($xmlNameInput, "r");
         $xmlContentsInput = fread($xmlHandleInput, filesize($xmlNameInput));
+
         fclose($xmlHandleInput);
+        fclose($handleInput);
+        fclose($handleOutput);
+
         unlink($xmlNameInput);
 
         $parsedZip = $this->getString($this->simpleXOR($this->getBytes($xmlContentsInput)));
 
-        return $parsedZip;
+        return $this->parseZip($parsedZip);
+
     }
 
-
-    public function getBytes($s)
+    public function getBytes($string)
     {
         $hexArray = [];
 
-        $size = strlen($s);
+        $size = strlen($string);
 
         for ($i = 0; $i < $size; $i++) {
-            $hexArray[] = chr(ord($s[$i]));
+            $hexArray[] = chr(ord($string[$i]));
         }
 
         return $hexArray;
@@ -298,7 +296,7 @@ class KnetBilling implements Billing
 
     public function simpleXOR($abyte0)
     {
-        $key = "Those who profess to favour freedom and yet depreciate agitation are men who want rain without thunder and lightning";
+        $key = self::CIPHER_KEY;
         $abyte1 = $this->getBytes($key);
         $abyte2 = [];
 
@@ -315,11 +313,7 @@ class KnetBilling implements Billing
 
     public function getString($byteArray)
     {
-        $s = "";
-        foreach ($byteArray as $byte) {
-            $s .= $byte;
-        }
-        return $s;
+        return implode('',$byteArray);
     }
 
     public function startsWith($haystack, $needle)
@@ -330,6 +324,11 @@ class KnetBilling implements Billing
     public function endsWith($haystack, $needle)
     {
         return strrpos($haystack, $needle) === strlen($haystack) - strlen($needle);
+    }
+
+    private function parseZip($zip)
+    {
+        return json_decode(json_encode((array)simplexml_load_string($zip)), 1);
     }
 
 }
