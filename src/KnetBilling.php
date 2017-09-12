@@ -128,13 +128,10 @@ class KnetBilling implements Billing
     private function initResourceFile()
     {
         $payload = $this->parseResourceFile();
-
         foreach ($payload as $key => $value) {
             $this->{$key} = $value;
         }
-
         unlink($this->resourcePath . "resource.cgz");
-
         return $this;
     }
 
@@ -145,9 +142,7 @@ class KnetBilling implements Billing
      */
     private function processRequest()
     {
-
         $url = $this->buildUrl();
-
         $urlParams = $this->buildUrlParams();
 
         if (empty($url) || empty($urlParams) || empty($this->webaddress)) {
@@ -196,24 +191,19 @@ class KnetBilling implements Billing
 
         fwrite($handleOutput, $this->getString($outByteArray));
 
-
         $zip = new ZipArchive;
-
         if (!$zip->open($filenameOutput)) {
             throw new \Exception('Could not open the Zip file');
         }
-
         $zip->extractTo($this->resourcePath);
         $zip->close();
 
         $xmlNameInput = $this->resourcePath . $this->alias . ".xml";
         $xmlHandleInput = fopen($xmlNameInput, "r");
         $xmlContentsInput = fread($xmlHandleInput, filesize($xmlNameInput));
-
         fclose($xmlHandleInput);
         fclose($handleInput);
         fclose($handleOutput);
-
         unlink($xmlNameInput);
 
         $parsedZip = $this->parseZip($this->getString($this->simpleXOR($this->getBytes($xmlContentsInput))));
@@ -229,13 +219,10 @@ class KnetBilling implements Billing
     private function getBytes($string)
     {
         $hexArray = [];
-
         $size = strlen($string);
-
         for ($i = 0; $i < $size; $i++) {
             $hexArray[] = chr(ord($string[$i]));
         }
-
         return $hexArray;
     }
 
@@ -244,7 +231,6 @@ class KnetBilling implements Billing
         $key = self::CIPHER_KEY;
         $abyte1 = $this->getBytes($key);
         $abyte2 = [];
-
         for ($i = 0; $i < sizeof($abyte0);) {
             for ($j = 0; $j < sizeof($abyte1); $j++) {
                 $abyte2[$i] = $abyte0[$i] ^ $abyte1[$j];
@@ -252,7 +238,6 @@ class KnetBilling implements Billing
                     break;
             }
         }
-
         return $abyte2;
     }
 
@@ -266,16 +251,12 @@ class KnetBilling implements Billing
         return json_decode(json_encode((array)simplexml_load_string($zip)), 1);
     }
 
-
     public function requestPayment()
     {
         $payload = $this->processRequest();
-
         $paymentURL = strpos($payload, ":");
-
         $this->paymentId = substr($payload, 0, $paymentURL);
         $this->paymentUrl = substr($payload, $paymentURL + 1);
-
         return $this;
     }
 
@@ -302,11 +283,9 @@ class KnetBilling implements Billing
             'trackId'      => $this->trackId,
             'amt'          => $this->amt,
         ]);
-
         return $params;
     }
 
 }
-
 
 ?>
