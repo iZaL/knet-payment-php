@@ -1,0 +1,24 @@
+{
+  "name": "izal/knet-payment-php",
+  "description": "Php SDK for Knet Payment Gateway",
+  "license": "MIT",
+  "keywords": ["knet","knet payment", "knet client", "knet sdk", "knet php"],
+  "authors": [
+    {
+      "name": "Afzal Abbas",
+      "email": "z4ls@live.com"
+    }
+  ],
+  "require": {
+    "guzzlehttp/guzzle": "6.*",
+    "php": ">=5.5.9"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "4.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "IZaL\\Knet\\": "src"
+    }
+  }
+}
