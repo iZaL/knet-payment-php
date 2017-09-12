@@ -30,17 +30,17 @@ class KnetBilling implements Billing
     protected $resourcePath;
     protected $alias;
 
-    protected $requiredConstructorKeys = ['alias','resourcePath'];
+    protected $requiredConstructorKeys = ['alias', 'resourcePath'];
 
     public function __construct(array $options = [])
     {
-        foreach($options as $key => $val) {
+        foreach ($options as $key => $val) {
             $this->{$key} = $val;
         }
 
-        foreach($this->requiredConstructorKeys as $requiredField) {
-            if(empty($this->{$requiredField})) {
-                throw new KeyMissingException($requiredField .' key is missing');
+        foreach ($this->requiredConstructorKeys as $requiredField) {
+            if (empty($this->{$requiredField})) {
+                throw new KeyMissingException($requiredField . ' key is missing');
             }
         }
 
@@ -122,61 +122,42 @@ class KnetBilling implements Billing
         return $this->paymentUrl . "&PaymentID=" . $this->paymentId;
     }
 
-    public function requestPayment()
+    /**
+     * @throws \Exception
+     */
+    private function initResourceFile()
     {
+        $payload = $this->parseResourceFile();
 
-        $payload = $this->processRequest();
+        foreach ($payload as $key => $value) {
+            $this->{$key} = $value;
+        }
 
-        $paymentURL = strpos($payload, ":");
-
-        $this->paymentId = substr($payload, 0, $paymentURL);
-        $this->paymentUrl = substr($payload, $paymentURL + 1);
+        unlink($this->resourcePath . "resource.cgz");
 
         return $this;
     }
+
 
     /**
      * @return string
      * @throws \Exception
      */
-    public function processRequest()
+    private function processRequest()
     {
+
+        $url = $this->buildUrl();
 
         $urlParams = $this->buildUrlParams();
 
-        if (empty($urlParams)) {
-            throw new \Exception("Failed to make connection");
+        if (empty($url) || empty($urlParams) || empty($this->webaddress)) {
+            throw new \Exception("Failed to make connection to the Target URL");
         }
-
-        if (empty($this->webaddress)) {
-            throw new \Exception("Could not build URL");
-        }
-
-        $protocol = $this->port == "443" ? "https://" : "http://";
-
-        $stringBuffer = $protocol . $this->webaddress . ':' . $this->port;
-
-        if (strlen($this->context) > 0) {
-
-            if (!$this->startsWith($this->context, "/")) {
-                $stringBuffer .= "/";
-            }
-
-            $stringBuffer .= $this->context;
-
-            if (!$this->endsWith($this->context, "/")) {
-                $stringBuffer .= "/";
-            }
-        } else {
-            $stringBuffer .= "/";
-        }
-
-        $stringBuffer .= "servlet/" . "PaymentInitHTTPServlet";
 
         $request = curl_init();
 
         curl_setopt($request, CURLOPT_HEADER, 0);
-        curl_setopt($request, CURLOPT_URL, $stringBuffer);
+        curl_setopt($request, CURLOPT_URL, $url);
         curl_setopt($request, CURLOPT_POST, true);
         curl_setopt($request, CURLOPT_POSTFIELDS, $urlParams);
         curl_setopt($request, CURLOPT_SSL_VERIFYHOST, 2);
@@ -193,37 +174,15 @@ class KnetBilling implements Billing
             throw new \Exception("No Data To Post");
         }
 
-        curl_close($request);
-
         return $response;
     }
 
 
     /**
-     * @throws \Exception
-     */
-    public function initResourceFile()
-    {
-        $payload = $this->createReadableZip();
-
-        if(!is_array($payload)) {
-            throw new \Exception('Could not parse the Zip file');
-        }
-
-        foreach ($payload as $key => $value) {
-            $this->{$key} = $value;
-        }
-
-        unlink($this->resourcePath . "resource.cgz");
-
-        return $this;
-    }
-
-    /**
      * @return array
      * @throws \Exception
      */
-    public function createReadableZip()
+    private function parseResourceFile()
     {
         $filenameInput = $this->resourcePath . "resource.cgn";
         $handleInput = fopen($filenameInput, "r");
@@ -257,13 +216,17 @@ class KnetBilling implements Billing
 
         unlink($xmlNameInput);
 
-        $parsedZip = $this->getString($this->simpleXOR($this->getBytes($xmlContentsInput)));
+        $parsedZip = $this->parseZip($this->getString($this->simpleXOR($this->getBytes($xmlContentsInput))));
 
-        return $this->parseZip($parsedZip);
+        if (!is_array($parsedZip)) {
+            throw new \Exception('Parsed Zip file returned Wrong Format, Should be an array');
+        }
+
+        return $parsedZip;
 
     }
 
-    public function getBytes($string)
+    private function getBytes($string)
     {
         $hexArray = [];
 
@@ -276,7 +239,7 @@ class KnetBilling implements Billing
         return $hexArray;
     }
 
-    public function simpleXOR($abyte0)
+    private function simpleXOR($abyte0)
     {
         $key = self::CIPHER_KEY;
         $abyte1 = $this->getBytes($key);
@@ -293,24 +256,36 @@ class KnetBilling implements Billing
         return $abyte2;
     }
 
-    public function getString($byteArray)
+    private function getString($byteArray)
     {
-        return implode('',$byteArray);
-    }
-
-    public function startsWith($haystack, $needle)
-    {
-        return strpos($haystack, $needle) === 0;
-    }
-
-    public function endsWith($haystack, $needle)
-    {
-        return strrpos($haystack, $needle) === strlen($haystack) - strlen($needle);
+        return implode('', $byteArray);
     }
 
     private function parseZip($zip)
     {
         return json_decode(json_encode((array)simplexml_load_string($zip)), 1);
+    }
+
+
+    public function requestPayment()
+    {
+        $payload = $this->processRequest();
+
+        $paymentURL = strpos($payload, ":");
+
+        $this->paymentId = substr($payload, 0, $paymentURL);
+        $this->paymentUrl = substr($payload, $paymentURL + 1);
+
+        return $this;
+    }
+
+    private function buildUrl()
+    {
+        $protocol = $this->port == "443" ? "https://" : "http://";
+        $stringBuffer = $protocol . $this->webaddress . ':' . $this->port;
+        $stringBuffer .= empty($this->context) ? "/" : "/".$this->context."/";
+        $stringBuffer .= "servlet/PaymentInitHTTPServlet";
+        return $stringBuffer;
     }
 
     private function buildUrlParams()
