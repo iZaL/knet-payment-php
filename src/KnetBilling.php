@@ -3,6 +3,7 @@
 namespace IZaL\Knet;
 
 use IZaL\Knet\Billing;
+use IZaL\Knet\Exceptions\KeyMissingException;
 use \ZipArchive;
 
 class KnetBilling implements Billing
@@ -11,43 +12,39 @@ class KnetBilling implements Billing
     const CIPHER_KEY = "Those who profess to favour freedom and yet depreciate agitation are men who want rain without thunder and lightning";
 
     protected $webaddress;
-    protected $port;
+    protected $port = "443";
     protected $id;
     protected $password;
     protected $passwordhash;
-    protected $action;
+    protected $action = "1";
     protected $transId;
     protected $amt;
     protected $responseURL;
     protected $trackId;
     protected $paymentUrl;
     protected $paymentId;
-    protected $currency;
+    protected $currency = "414";
     protected $errorURL;
-    protected $language;
+    protected $language = "ENG";
     protected $context;
     protected $resourcePath;
     protected $alias;
 
-    public function __construct()
+    protected $requiredConstructorKeys = ['alias','resourcePath'];
+
+    public function __construct(array $options = [])
     {
-        $this->webaddress = "";
-        $this->port = "443";
-        $this->id = "";
-        $this->password = "";
-        $this->action = "1";
-        $this->transId = "";
-        $this->amt = "";
-        $this->responseURL = "";
-        $this->trackId = "";
-        $this->paymentUrl = "";
-        $this->paymentId = "";
-        $this->currency = "";
-        $this->errorURL = "";
-        $this->language = "";
-        $this->context = "";
-        $this->resourcePath = "";
-        $this->alias = "";
+        foreach($options as $key => $val) {
+            $this->{$key} = $val;
+        }
+
+        foreach($this->requiredConstructorKeys as $requiredField) {
+            if(empty($this->{$requiredField})) {
+                throw new KeyMissingException($requiredField .' key is missing');
+            }
+        }
+
+        $this->initResourceFile();
     }
 
     public function setPort($s)
@@ -128,7 +125,7 @@ class KnetBilling implements Billing
     public function requestPayment()
     {
 
-        $payload = $this->initRequest();
+        $payload = $this->processRequest();
 
         $paymentURL = strpos($payload, ":");
 
@@ -142,25 +139,10 @@ class KnetBilling implements Billing
      * @return string
      * @throws \Exception
      */
-    public function initRequest()
+    public function processRequest()
     {
 
-        $this->readFromResource();
-
-        $args = [
-            'id'           => $this->id,
-            'password'     => $this->password,
-            'passwordhash' => $this->passwordhash,
-            'currencycode' => $this->currency,
-            'action'       => $this->action,
-            'langid'       => $this->language,
-            'responseURL'  => $this->responseURL,
-            'errorURL'     => $this->errorURL,
-            'trackId'      => $this->trackId,
-            'amt'          => $this->amt,
-        ];
-
-        $urlParams = http_build_query($args);
+        $urlParams = $this->buildUrlParams();
 
         if (empty($urlParams)) {
             throw new \Exception("Failed to make connection");
@@ -220,7 +202,7 @@ class KnetBilling implements Billing
     /**
      * @throws \Exception
      */
-    public function readFromResource()
+    public function initResourceFile()
     {
         $payload = $this->createReadableZip();
 
@@ -329,6 +311,24 @@ class KnetBilling implements Billing
     private function parseZip($zip)
     {
         return json_decode(json_encode((array)simplexml_load_string($zip)), 1);
+    }
+
+    private function buildUrlParams()
+    {
+        $params = http_build_query([
+            'id'           => $this->id,
+            'password'     => $this->password,
+            'passwordhash' => $this->passwordhash,
+            'currencycode' => $this->currency,
+            'action'       => $this->action,
+            'langid'       => $this->language,
+            'responseURL'  => $this->responseURL,
+            'errorURL'     => $this->errorURL,
+            'trackId'      => $this->trackId,
+            'amt'          => $this->amt,
+        ]);
+
+        return $params;
     }
 
 }
