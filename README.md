@@ -60,7 +60,7 @@ $paymentURL = $knetGateway->getPaymentURL();
 Third step is to Redirect the user to the Payment URL
 ```php
 // Redirect the USER to the Payment URL
-header('Location: '.$newURL);
+header('Location: '.$paymentURL);
 
 ```
 
