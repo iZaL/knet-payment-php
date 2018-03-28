@@ -31,7 +31,9 @@ $knetGateway = new KnetBilling([
 $knetGateway->setResponseURL('http://mywebapp.com/payment/response.php');
 $knetGateway->setErrorURL('http://mywebapp.com/payment/error.php);
 $knetGateway->setAmt(100); 
-$knetGateway->setTrackId('123456'); // unique string 
+$knetGateway->setTrackId('123456'); // unique string
+
+// Refer the KnetBilling class for other configurations that can be set like currency, language etc
 
 ```
 
@@ -97,9 +99,47 @@ return "REDIRECT=" . $redirectURL . $urlParams;
  * KNET expects the return value from the page or method to be starting with 
  * REDIRECT=http://mywebapp.com/payment/success/?paymentID.. etc.
  */ 
- 
 
 ```
 
-This is it. KNET will redirect the USER to the success page in a GET request. i.e http://mywebapp.com/payment/success.php 
+This is it. KNET will redirect the USER to the success page in a GET request. i.e tp <pre>http://mywebapp.com/payment/success.php</pre>
 
+### Example
+
+```php
+
+    $responseURL = 'http://mywebapp.com/payment/response.php';
+    $successURL = 'http://mywebapp.com/payment/success.php';
+    $errorURL = 'http://mywebapp.com/payment/error.php';
+    $knetAlias = 'TEST_ALIAS';
+    $resourcePath = '/home/mywebapp/';
+    $amount = 150;
+    $trackID = 'UNIQUETRACKID'; 
+
+    try {
+
+        $knetGateway = new KnetBilling([
+            'alias'        => $knetAlias,
+            'resourcePath' => $resourcePath
+        ]);
+
+        $knetGateway->setResponseURL($successURL);
+        $knetGateway->setErrorURL($errorURL);
+        $knetGateway->setAmt($amount);
+        $knetGateway->setTrackId($trackID);
+
+        $knetGateway->requestPayment();
+        $paymentURL = $knetGateway->getPaymentURL();
+
+        // helper function to redirect
+        return header('Location: '.$paymentURL);
+
+    } catch (\Exception $e) {
+    
+        // to debug error message 
+        // die(var_dump($e->getMessage()));
+        
+        return header('Location: '.$errorUrl);
+    }
+        
+```
