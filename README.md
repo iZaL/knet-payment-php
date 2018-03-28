@@ -102,7 +102,7 @@ return "REDIRECT=" . $redirectURL . $urlParams;
 
 ```
 
-This is it. KNET will redirect the USER to the success page in a GET request. i.e tp <pre>http://mywebapp.com/payment/success.php</pre>
+This is it. KNET will redirect the USER to the success page in a GET request. i.e to <pre>http://mywebapp.com/payment/success.php</pre>
 
 ### Example
 
