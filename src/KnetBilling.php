@@ -180,6 +180,11 @@ class KnetBilling implements Billing
     private function parseResourceFile()
     {
         $filenameInput = $this->resourcePath . "resource.cgn";
+
+        if(!is_file($filenameInput)) {
+            throw new \Exception('Resource file not found on the path '. $this->resourcePath);
+        }
+
         $handleInput = fopen($filenameInput, "r");
         $contentsInput = fread($handleInput, filesize($filenameInput));
 
