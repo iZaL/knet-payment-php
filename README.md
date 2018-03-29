@@ -60,6 +60,7 @@ $paymentURL = $knetGateway->getPaymentURL();
 <pre>Note: If the Payment URL returns null, most probably you messaged up with configuration, or resource path. Check the example in the below section how to ideally request for the payment, which helps to debug for the errors</pre>
 
 Third step is to Redirect the user to the Payment URL
+
 ```php
 // Redirect the USER to the Payment URL
 header('Location: '.$paymentURL);
@@ -68,16 +69,11 @@ header('Location: '.$paymentURL);
 
 <pre>NOTE: Behind the scenes, Customer will be forwarded to the Knet Payment Page, If the payment process was success, Then he will be redirected to the Response URL we set in setResponseURL method. i.e http://mywebapp.com/payment/response.php</pre>
 
-
 Fourth step is to get the response returned from the Knet Gateway and redirect the user to success or error page in your application.
 
+```php
 
-```
-
-/**
-* to handle the payment response, in http://mywebapp.com/payment/response.php file.
-* 
-*/
+// handle gateway response in http://mywebapp.com/payment/response.php
 
 $paymentID = $_POST['paymentid']; 
 $result = $_POST['result']; // if the transaction is success, string "CAPTURED" will be return
@@ -104,7 +100,7 @@ return "REDIRECT=" . $redirectURL . $urlParams;
 
 This is it. KNET will redirect the USER to the success page in a GET request. i.e to <pre>http://mywebapp.com/payment/success.php</pre>
 
-### Example
+## Example
 
 ```php
 
