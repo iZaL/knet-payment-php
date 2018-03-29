@@ -57,7 +57,7 @@ $paymentURL = $knetGateway->getPaymentURL();
 
 ```
 
-<pre>Note: If the Payment URL returns null, most probably you messaged up with configuration, or resource path. Check the example in the below section how to ideally request for the payment, which helps to debug for the errors</pre>
+<pre>Note: If the Payment URL returns null, most probably you messed up with configuration, or resource path. Check the example in the below section how to ideally request for the payment, which helps to debug for the errors</pre>
 
 Third step is to Redirect the user to the Payment URL
 
