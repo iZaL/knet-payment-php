@@ -122,6 +122,11 @@ class KnetBilling implements Billing
         return $this->paymentUrl . "&PaymentID=" . $this->paymentId;
     }
 
+    public function getPaymentID()
+    {
+        return $this->paymentId;
+    }
+
     /**
      * @throws \Exception
      */
@@ -256,6 +261,10 @@ class KnetBilling implements Billing
         return json_decode(json_encode((array)simplexml_load_string($zip)), 1);
     }
 
+    /**
+     * @return $this
+     * @throws \Exception
+     */
     public function requestPayment()
     {
         $payload = $this->processRequest();
